@@ -8,9 +8,10 @@ import pickle
 from colorama import Fore, Style
 
 from tensorflow.keras import Model, models
+from google.cloud import storage
 
 
-def save_model(model: Model = None,
+def save_local_model(model: Model = None,
                params: dict = None,
                metrics: dict = None) -> None:
     """
@@ -45,6 +46,20 @@ def save_model(model: Model = None,
 
     return None
 
+def save_cloud_model(model):
+
+    print("saving model in the cloud 🧬")
+
+    BUCKET_NAME = "lecture_1039"
+
+    storage_filename = "models/lecture_example"
+    local_filename = "saved_model.pb"
+
+    client = storage.Client()
+    bucket = client.bucket(BUCKET_NAME)
+    blob = bucket.blob(storage_filename)
+    blob.upload_from_filename(local_filename)
+
 
 def load_model(save_copy_locally=False) -> Model:
     """
@@ -62,7 +77,18 @@ def load_model(save_copy_locally=False) -> Model:
     model_path = sorted(results)[-1]
     print(f"- path: {model_path}")
 
-    model = models.load_model(model_path)
-    print("\n✅ model loaded from disk")
+    if os.environ["MODEL_TARGET"] == "local":
 
-    return model
+        model = models.load_model(model_path)
+        print("\n✅ model loaded from disk")
+
+    elif os.environ["MODEL_TARGET"] == "cloud":
+
+        model_cloud_path = "gs://batch1039/models/20221115-105430"
+        cloud_model = models.load_model(model_path)
+        print("\n✅ model loaded from cloud")
+
+    else:
+        raise ValueError(f"Invalid .env config for model: {os.environ['MODEL_TARGET']} 🤕")
+
+    return cloud_model
